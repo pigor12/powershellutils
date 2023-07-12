@@ -3,9 +3,9 @@ CHCP 65001 > NUL
 CLS
 TITLE ServiceDesk - FIEMG
 ECHO.
-POWERSHELL -Command "Write-Host -fore Blue  '░▒█▀▀▀░▀█▀░▒█▀▀▀░▒█▀▄▀█░▒█▀▀█'"
-POWERSHELL -Command "Write-Host -fore Blue  '░▒█▀▀░░▒█░░▒█▀▀▀░▒█▒█▒█░▒█░▄▄'"
-POWERSHELL -Command "Write-Host -fore Blue  '░▒█░░░░▄█▄░▒█▄▄▄░▒█░░▒█░▒█▄▄▀'"
+ECHO    ░▒█▀▀▀░▀█▀░▒█▀▀▀░▒█▀▄▀█░▒█▀▀█
+ECHO    ░▒█▀▀░░▒█░░▒█▀▀▀░▒█▒█▒█░▒█░▄▄
+ECHO    ░▒█░░░░▄█▄░▒█▄▄▄░▒█░░▒█░▒█▄▄▀
 ECHO.
 ECHO.
 ECHO 1 ─ Preparação de computadores
@@ -52,6 +52,7 @@ GOTO :CASE-%ERRORLEVEL%
     ECHO 5 ─ Microsoft Teams
     ECHO 6 ─ Citrix Workspace
     ECHO 7 ─ Kaspersky Endpoint
+    ECHO 8 - Microsoft Office
     ECHO.
     SET /P "N=Escolha uma das opções acima:"
     :OPCAO-PRIM
@@ -105,11 +106,63 @@ GOTO :CASE-%ERRORLEVEL%
         )
         START /WAIT %LOCAL%\installer.exe /s
         GOTO :CASE-4
+    :OPCAO-8
+        ECHO.
+        ECHO Versões disponíveis
+        ECHO 0 - 2010
+        ECHO 1 - 2013
+        ECHO 2 - 2016
+        ECHO 3 - 2019
+        ECHO 4 - 2021
+        SET /P "N=Escolha a versão do Office:"
+        :OFFICEV-PRIM
+        GOTO :OFFICEV-%N% 2 > NUL || (
+            ECHO Opção inválida.
+        )
+        :OFFICEV-0
+            SET /P "USERNAME=Digite seu nome de usuário:"
+            SET /P "PASSWORD=Digite sua senha (aparecerá no console):"
+            NET USE K: "\\TARUMIRIM\SOFTWARE$\10-PROGRAMAS\Microsoft Office" /USER:FIEMG\%USERNAME% %PASSWORD%
+            "K:\Microsoft Office 2010\setup.exe"
+            NET USE K: /DELETE
+            GOTO :CASE-4
+        :OFFICEV-1
+            SET /P "USERNAME=Digite seu nome de usuário:"
+            SET /P "PASSWORD=Digite sua senha (aparecerá no console):"
+            NET USE K: "\\TARUMIRIM\SOFTWARE$\10-PROGRAMAS\Microsoft Office" /USER:FIEMG\%USERNAME% %PASSWORD%
+            "K:\Microsoft Office 2013\setup.exe"
+            NET USE K: /DELETE
+            GOTO :CASE-4
+        :OFFICEV-2
+            SET /P "USERNAME=Digite seu nome de usuário:"
+            SET /P "PASSWORD=Digite sua senha (aparecerá no console):"
+            NET USE K: "\\TARUMIRIM\SOFTWARE$\10-PROGRAMAS\Microsoft Office" /USER:FIEMG\%USERNAME% %PASSWORD%
+            "K:\Microsoft Office 2016\setup.exe"
+            NET USE K: /DELETE
+            GOTO :CASE-4
+        :OFFICEV-3
+            SET /P "USERNAME=Digite seu nome de usuário:"
+            SET /P "PASSWORD=Digite sua senha (aparecerá no console):"
+            SET /P "ENT=Digite a entidade:"
+            NET USE K: "\\TARUMIRIM\SOFTWARE$\10-PROGRAMAS\Microsoft Office" /USER:FIEMG\%USERNAME% %PASSWORD%
+            "K:\Microsoft Office  2019 Pro Plus\setup.exe /configure K:\Microsoft Office 2019 Pro Plus\config-%ENT%.xml"
+            NET USE K: /DELETE
+            GOTO :CASE-4
+        :OFFICEV-4
+            SET /P "USERNAME=Digite seu nome de usuário:"
+            SET /P "PASSWORD=Digite sua senha (aparecerá no console):"
+            SET /P "ENT=Digite a entidade:"
+            NET USE K: "\\TARUMIRIM\SOFTWARE$\10-PROGRAMAS\Microsoft Office" /USER:FIEMG\%USERNAME% %PASSWORD%
+            "K:\Microsoft Office 2021 Pro Plus\setup.exe /configure K:\Microsoft Office 2021 Pro Plus\config-office2021-%ENT%.xml"
+            NET USE K: /DELETE
+            GOTO :CASE-4
 :CASE-3
     ECHO.
-    ECHO 0 ─ Adicionar impressora(s).
-    ECHO 1 ─ Adicionar máquina ao domínio.
-    ECHO 2 ─ Atualização de políticas de grupo.
+    ECHO 0 ─ Adicionar impressora(s)
+    ECHO 1 ─ Adicionar máquina ao domínio
+    ECHO 2 ─ Atualização de políticas de grupo
+    ECHO 3 - Windows Update
+    ECHO 4 - Verificador de Arquivos de Sistema *
     SET /P "N=Escolha uma das opções acima:"
     :ROT-PRIM
         GOTO :ROT-%N% 2 > NUL || (
@@ -129,7 +182,28 @@ GOTO :CASE-%ERRORLEVEL%
         POWERSHELL -Command "Add-Computer -ComputerName %NOMEDOPC% -DomainName 'fiemg.com.br' -Credential FIEMG\%USER% -Force"
         GOTO :CASE-4
     :ROT-2
-        START /WAIT GPUPDATE /FORCE
+        GPUPDATE /FORCE
+        POWERSHELL -Command "Test-ComputerSecureChannel -Verbose"
+        GOTO :CASE-4
+    :ROT-3
+        SETLOCAL
+        FOR /F %%I IN ('powershell.exe -ExecutionPolicy Bypass -Command "(Get-WmiObject -Class Win32_OperatingSystem).Version"') do set OS_VERSION=%%I
+        IF "%OS_VERSION:~0,3%"=="6.1" (
+            START control update
+        ) ELSE IF "%OS_VERSION:~0,3%"=="6.2" (
+            START control update
+        ) ELSE IF "%OS_VERSION:~0,3%"=="10." (
+            START ms-settings:windowsupdate
+        ) ELSE IF "%OS_VERSION:~0,3%"=="11." (
+            START ms-settings:windowsupdate
+        )
+        ENDLOCAL
+        GOTO :CASE-4
+    :ROT-4
+        POWERSHELL -Command "Write-Host -fore Yellow 'Para executar estes comandos, é necessário que esteja executando como ADMINISTRADOR.'"
+        PAUSE
+        START /WAIT DISM /Online /Cleanup-image /Restorehealth
+        START /WAIT SFC /SCANNOW
         GOTO :CASE-4
 :CASE-4
     ECHO.

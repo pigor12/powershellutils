@@ -16,7 +16,7 @@ ECHO.
 CHOICE /C 1234 /M "Escolha uma das opções acima:"
 GOTO :CASE-%ERRORLEVEL%
 :CASE-1
-    ECHO Os arquivos deverão estar na mesma pasta deste script com o nome TMP.
+    POWERSHELL -Command "Write-Host -fore Yellow 'Os arquivos deverão estar na mesma pasta deste script com o nome TMP.'"
     PAUSE
     START /WAIT TMP\7zip.exe /S
     START /WAIT TMP\PDFSam.msi /QUIET /NORESTART

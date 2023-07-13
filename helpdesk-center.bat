@@ -1,5 +1,8 @@
 @ECHO OFF
 CHCP 65001 > NUL
+REM @Autor:  Pedro Igor Martins dos Reis
+REM @E-mail: pigor@fiemg.com.br
+REM @Data:   11/06/2023
 CLS
 TITLE ServiceDesk - FIEMG
 SETLOCAL EnableDelayedExpansion
@@ -12,10 +15,7 @@ ECHO ++++-  ----+.  +-  -====+. --   .+  -+   ++-:  -++++
 ECHO ++++  .++++=  :+.  ....==  +=  .+=  ++-   ::.  +++++
 ECHO ==++==++++++==++=======++=+++==+++=++++++====+++++==
 ECHO.
-ECHO  Federação das Indústrias do Estado de Minas Gerais
 ECHO.
-ECHO.
-ECHO Autor: Pedro Igor Martins dos Reis
 :MENU
     ECHO.
     ECHO [0] SAIR
@@ -30,10 +30,18 @@ ECHO Autor: Pedro Igor Martins dos Reis
     IF "%ESCOLHA%" == "3" GOTO :ROT_MENU
 :PREP
     POWERSHELL -Command  "Write-Host -fore Yellow 'Verifique se o diretório C:\TMP está disponível e com todos os arquivos necessários.'"
-    IF NOT EXIST "C$\TMP" (
+    IF NOT EXIST "C:\TMP" (
         POWERSHELL -Command  "Write-Host -fore Red 'Pasta TMP indisponível, retornado ao menu principal.'"
     ) ELSE (
-        REM TO DO
+        SET "LOCAL=C:\TMP"
+        CALL :INSTALL "%LOCAL%\7zip.exe" "/S"
+        CALL :MSI_INSTALL "%LOCAL%\PDFSam.msi"
+        CALL :INSTALL "%LOCAL%\Acrobat.exe" "/sAll"
+        CALL :MSI_INSTALL "%LOCAL%\Chrome.msi"
+        CALL :MSI_INSTALL "%LOCAL%\Firefox.msi"
+        CALL :INSTALL "%LOCAL%\Teams.exe" "-s"
+        CALL :INSTALL "%LOCAL%\CitrixWorkspaceApp.exe" "/silent"
+        CALL :INSTALL "%LOCAL%\installer.exe" "/s"
     )
     GOTO :MENU
 :DOWNLOAD
@@ -118,7 +126,7 @@ ECHO Autor: Pedro Igor Martins dos Reis
     ECHO [10] PROTHEUS
     ECHO [11] Drivers Certisign
     ECHO [12] Microsoft PowerBI
-    ECHO [13] VPN FortiClient
+    ECHO [13] Java Runtime Environment
     ECHO.
     SET /P "I=Digite a opção que deseja e pressione ENTER: "
     IF "%I%" == "0"  GOTO :MENU
@@ -134,6 +142,7 @@ ECHO Autor: Pedro Igor Martins dos Reis
     IF "%I%" == "10" GOTO :INST_PROTHEUS
     IF "%I%" == "11" GOTO :INST_CERTISIGN
     IF "%I%" == "12" GOTO :INST_BI
+    IF "%I%" == "13" GOTO :INST_JRE
 :INST_7ZIP
     CALL :CRIAR_PASTA
     ECHO.
@@ -314,7 +323,7 @@ ECHO Autor: Pedro Igor Martins dos Reis
         IF NOT EXIST "%LOCAL%\DesktopID.exe" (
             CALL :DOWNLOAD "https://drivers.certisign.com.br/DesktopID/Windows/Setup_desktopID.exe" "%LOCAL%\DesktopID.exe" "DesktopID"
         )
-        CALL :INSTALL 
+        CALL :INSTALL
     )
     GOTO :INST_MENU
 :INST_BI
@@ -323,6 +332,13 @@ ECHO Autor: Pedro Igor Martins dos Reis
         CALL :DOWNLOAD "https://download.microsoft.com/download/8/8/0/880BCA75-79DD-466A-927D-1ABF1F5454B0/PBIDesktopSetup_x64.exe" "%LOCAL%\PowerBI.exe" "Microsoft PowerBI"
     )
     CALL :INSTALL "%LOCAL%\PowerBI.exe" "-silent -norestart"
+    GOTO :INST_MENU
+:INST_JRE
+    CALL :CRIAR_PASTA
+    IF NOT EXIST "%LOCAL%\JRE.exe" (
+        CALL :DOWNLOAD "https://javadl.oracle.com/webapps/download/AutoDL?BundleId=248242_ce59cff5c23f4e2eaf4e778a117d4c5b" "%LOCAL%\JRE.exe" "Java Runtime Environment"
+    )
+    CALL :INSTALL "%LOCAL%\JRE.exe" "/s"
     GOTO :INST_MENU
 :ROT_MENU
     CLS
@@ -359,11 +375,33 @@ ECHO Autor: Pedro Igor Martins dos Reis
     POWERSHELL -Command "Get-Printer -Name '%PREFIX_IMPRESSORA%*' | ForEach-Object { Add-Printer -Name $_.Name -ConnectionName '%SERVER%\'+$_.Name }"
     PAUSE
     GOTO :ROT_MENU
+:IMP_SETORES
+    SET "SETORES=ADI - Gerencia Auditoria, ASE - PLANEJAMENTO - Assessoria Estrategica, CCR - Camera Conselho e Representação, CCT - Comunicação Corporativa Publicitaria, CON - Gerência de Controladoria, DES - Desenvolvimento Sindical, EIQ - Gerencia de Educação e Inovação e Qualidade de Vida, GAN - Gerência de Atração de Negócios e Investimento, GCE - Gerencia Cerimonial, GCM - Gerência de Comunicação, GCO - Gerência de Compliance e Ouvidoria, GCV - Gerência Comercial Vendas, GDP - Gerência Comercial Vendas, GDS - Gerência de Saúde, GEA - Gerência de Arrecadação, GEC - Gerência Economia, GEP - Gerência Educacional Profissional, GFE - Gerência de Feiras e Eventos, GIC - Gerência de Inteligência Competitiva, GJU - Gerência de Assessoria Jurídica, GMA - Gerência de Proejtos para Indústria, GPI - Gerência de Projetos de Negócios, GPN - Gerência Relação Comercial, GRC - Gerência Estrutura Organizacional e Renumeração, GRP - Gerência de Responsabilidade Social, GRS - Gerência Segurança da Informação, GSI - Gerência Segurança Institucional, LGP - Gerência Segurança - LGPD, PSD - Presidência FIEMG"
+    ECHO.
+    FOR %%S IN (%SETORES%) DO (
+        FOR /F "tokens=1,2 delims=-" %%A IN ("%%S") DO (
+            ECHO %%A = %%B
+        )
+    )
+    EXIT /B 0
 :ROT_DOMIN
-    POWERSHELL -Command "Write-Host -fore Yellow 'Para poder executar este comando é necessário ter privilégio de administrador.'"
+    POWERSHELL -Command "Write-Host -fore Yellow 'Para poder executar este comando é necessário ter privilégios de administrador.'"
     SET /P "USER=Digite o nome do seu usuário:"
-    SET /P "NOMEDOPC=Digite o nome do computador:"
-    POWERSHELL -Command "Add-Computer -ComputerName %NOMEDOPC% -DomainName 'fiemg.com.br' -Credential FIEMG\%USER% -Force"
+    SET /P "TIPO_PC=Notebook (N) ou Desktop (D): "
+    SET /P "CONSULTAR_SETORES=Deseja consultar a lista de abreviações de setores? (0 - SIM | 1 - NÃO): "
+    IF %CONSULTAR_SETORES% EQU 0 (
+        CALL :IMP_SETORES
+    )
+    SET /P "SETOR=Digite a abreviação do setor: "
+    SET /P "ENT=Digite a entidade: (FIEMG | SESI | SENAI | IEL) "
+    SET /P "PATRIMONIO=Informe os últimos 6 números do patrimônio: "
+    SET /P "CONF=Está correto: %TIPO_PC%-%SETOR%-%ENT%%PATRIMONIO% ? (0 - SIM | 1 - NÃO)"
+    IF %CONF% EQU 0 (
+        POWERSHELL -Command "Add-Computer -ComputerName %NOMEDOPC% -DomainName fiemg.com.br -Credential FIEMG\%USER% -Force"
+    ) ELSE (
+        SET /P "N_NOME=Digite o nome manualmente: "
+        POWERSHELL -Command "Add-Computer -ComputerName %N_NOME% -DomainName fiemg.com.br -Credential FIEMG\%USER% -Force"
+    )
     PAUSE
     GOTO :ROT_MENU
 :ROT_GRPPOL
@@ -402,10 +440,9 @@ ECHO Autor: Pedro Igor Martins dos Reis
     PAUSE
     GOTO :ROT_MENU
 :ROT_LAPS
-    POWERSHELL -Command "Write-Host -fore Yellow 'Para poder executar este comando é necessário ter privilégio de administrador.'"
+    POWERSHELL -Command "Write-Host -fore Yellow 'Para poder executar este comando é necessário estar logado com um usuário com permissões administrativas.'"
     SET /P "PC=Digite o nome da máquina:"
-    SET /P "USER=Digite o nome de seu usuário:"
-    POWERSHELL -Command "Get-LapsADPassword -Identity %PC% -AsPlainText -Credential FIEMG\%USER%"
+    POWERSHELL -Command "Get-LapsADPassword -Identity %PC% -AsPlainText -Credential FIEMG\%USERNAME%"
     PAUSE
     GOTO :ROT_MENU
 :ROT_TEC
@@ -447,8 +484,8 @@ ECHO Autor: Pedro Igor Martins dos Reis
     ECHO.
     IF EXIST "%LOCAL%" (
         SET /P "BKP=Deseja manter os arquivos no diretório %LOCAL% (0 - Não | 1 - SIM) ? "
-        IF "%BKP%" == "0" (
-            RMDIR /S /Q %LOCAL%
+        IF %BKP% EQU 0
+            RMDIR /S /Q "%LOCAL%"
             POWERSHELL -Command "Write-Host -fore Yellow 'Limpando resíduos.'"
         ) ELSE (
             POWERSHELL -Command "Write-Host -fore Yellow 'Diretório %LOCAL% inalterado.'"

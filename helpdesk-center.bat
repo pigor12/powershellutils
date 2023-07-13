@@ -2,6 +2,7 @@
 CHCP 65001 > NUL
 CLS
 TITLE ServiceDesk - FIEMG
+SETLOCAL EnableDelayedExpansion
 ECHO.
 ECHO    ░▒█▀▀▀░▀█▀░▒█▀▀▀░▒█▀▄▀█░▒█▀▀█
 ECHO    ░▒█▀▀░░▒█░░▒█▀▀▀░▒█▒█▒█░▒█░▄▄
@@ -53,6 +54,10 @@ GOTO :CASE-%ERRORLEVEL%
     ECHO 6 ─ Citrix Workspace
     ECHO 7 ─ Kaspersky Endpoint
     ECHO 8 - Microsoft Office
+    :: TO DO
+    :: ECHO 9 - PROTHEUS
+    ECHO 10 - Drivers Certisign
+    ECHO 11 - Microsoft PowerBI
     ECHO.
     SET /P "N=Escolha uma das opções acima:"
     :OPCAO-PRIM
@@ -83,6 +88,12 @@ GOTO :CASE-%ERRORLEVEL%
             CURL -o %LOCAL%\Chrome.msi "https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise64.msi"
         )
         START /WAIT %LOCAL%\Chrome.msi /PASSIVE
+        GOTO :CASE-4
+    :OPCAO-4
+        IF NOT EXIST "%LOCAL%\Firefox.exe" (
+            CURL -L -o %LOCAL%\Firefox.exe "https://download.mozilla.org/?product=firefox-latest&os=win64&lang=pt-BR"
+        )
+        START /WAIT %LOCAL%\Firefox.exe /S
         GOTO :CASE-4
     :OPCAO-5
         IF NOT EXIST "%LOCAL%\Teams.exe" (
@@ -156,13 +167,47 @@ GOTO :CASE-%ERRORLEVEL%
             "K:\Microsoft Office 2021 Pro Plus\setup.exe /configure K:\Microsoft Office 2021 Pro Plus\config-office2021-%ENT%.xml"
             NET USE K: /DELETE
             GOTO :CASE-4
+    :OPCAO-9
+        GOTO :CASE-4
+    :OPCAO-10
+        SET /P "CERT=Escolha o tipo de certificado ( 0 - Starsign CUT | 1 - Desktop ID )"
+        IF %CERT% == 0 (
+            CURL -L -o GDSetup.exe "https://drivers.certisign.com.br/midias/tokens/gdburti/64bits/2k-xp-vi-7/GDsetupStarsignCUTx64.exe"
+            CURL -L -o CSP.exe "https://drivers.certisign.com.br/midias/gerenciadores/safesign/64bits/SafeSignIC30124-x64-win-tu-admin.exe"
+            START /WAIT GDSetup.exe
+            START /WAIT CSP.exe
+        )
+        IF %CERT% == 1 (
+            POWERSHELL -Command "Write-Host -fore Yellow 'Atenção! DesktopID funciona apenas com Windows 10 ou posterior.'"
+            PAUSE
+            CURL -L -o DesktopID.exe "https://drivers.certisign.com.br/DesktopID/Windows/Setup_desktopID.exe"
+            START /WAIT DesktopID.exe
+        )
+        GOTO :CASE-4
+    :OPCAO-11
+        IF NOT EXIST "%LOCAL%\java.exe" (
+            POWERSHELL -Command "Write-Host -fore Yellow 'Atenção! Será instalada a versão 64 Bits do JRE.'"
+            PAUSE
+            CURL -L -o %LOCAL%\java.exe "https://javadl.oracle.com/webapps/download/AutoDL?BundleId=248242_ce59cff5c23f4e2eaf4e778a117d4c5b"
+        )
+        START /WAIT %LOCAL%\java.exe /s
+        GOTO :CASE-4
+    :OPCAO-12
+        IF NOT EXIST "%LOCAL%\PowerBI.exe" (
+            CURL -L -o %LOCAL%\PowerBI.exe "https://download.microsoft.com/download/8/8/0/880BCA75-79DD-466A-927D-1ABF1F5454B0/PBIDesktopSetup_x64.exe"
+        )
+        START /WAIT %LOCAL%\PowerBI.exe -q -norestart ACCEPT_EULA=1
 :CASE-3
     ECHO.
     ECHO 0 ─ Adicionar impressora(s)
-    ECHO 1 ─ Adicionar máquina ao domínio
+    ECHO 1 ─ Adicionar máquina ao domínio *
     ECHO 2 ─ Atualização de políticas de grupo
     ECHO 3 - Windows Update
     ECHO 4 - Verificador de Arquivos de Sistema *
+    ECHO 5 - Serial do computador
+    ECHO 6 - Listar usuário(s) administrador(es)
+    ECHO 7 - LAPS *
+    ECHO 8 - Análise técnica
     SET /P "N=Escolha uma das opções acima:"
     :ROT-PRIM
         GOTO :ROT-%N% 2 > NUL || (
@@ -177,6 +222,7 @@ GOTO :CASE-%ERRORLEVEL%
         POWERSHELL -Command "Get-Printer -Name '%PREFIX_IMPRESSORA%*' | ForEach-Object { Add-Printer -Name $_.Name -ConnectionName '%SERVER%\'+$_.Name }"
         GOTO :CASE-4
     :ROT-1
+        POWERSHELL -Command "Write-Host -fore Yellow 'Para poder executar este comando é necessário ter privilégio de administrador.'"
         SET /P "USER=Digite o nome do seu usuário:"
         SET /P "NOMEDOPC=Digite o nome do computador:"
         POWERSHELL -Command "Add-Computer -ComputerName %NOMEDOPC% -DomainName 'fiemg.com.br' -Credential FIEMG\%USER% -Force"
@@ -204,6 +250,41 @@ GOTO :CASE-%ERRORLEVEL%
         PAUSE
         START /WAIT DISM /Online /Cleanup-image /Restorehealth
         START /WAIT SFC /SCANNOW
+        GOTO :CASE-4
+    :ROT-5
+        WMIC BIOS GET SERIALNUMBER
+        GOTO :CASE-4
+    :ROT-6
+        POWERSHELL -Command "-LocalGroupMember -Group "Administradores"
+        GOTO :CASE-4
+    :ROT-7
+        POWERSHELL -Command "Write-Host -fore Yellow 'Para poder executar este comando é necessário ter privilégio de administrador.'"
+        SET /P "PC=Digite o nome da máquina:"
+        SET /P "USER=Digite o nome de seu usuário:"
+        POWERSHELL -Command "Get-LapsADPassword -Identity {%PC%} -AsPlainText -Credential FIEMG\%USER%"
+        GOTO :CASE-4
+    :ROT-8
+        CLS
+        ECHO.
+        ECHO UEFI / BIOS
+        WPEUTIL UpdateBootInfo
+        POWERSHELL -Command "Write-Host -fore Cyan 'Informativo | Caso seja 0x1 - BIOS/Legacy, 0x2 - UEFI'"
+        REG QUERY HKLM\System\CurrentControlSet\Control /v PEFirmwareType
+        ECHO.
+        ECHO CPU
+        POWERSHELL -Command "Get-CimInstance -ClassName Win32_Processor"
+        ECHO.
+        ECHO RAM
+        POWERSHELL -Command "Get-WmiObject -Class "Win32_PhysicalMemoryArray""
+        ECHO.
+        ECHO Disco(s) disponível(is)
+        POWERSHELL -Command "Get-Physicaldisk | Format-Table -Autosize"
+        ECHO.
+        ECHO Trusted Platform Module
+        POWERSHELL -Command "Get-TPM | Select TpmPresent, TpmReady, TpmEnabled, TpmActivated"
+        ECHO.
+        ECHO Secure Boot
+        POWERSHELL -Command "Confirm-SecureBootUEFI"
         GOTO :CASE-4
 :CASE-4
     ECHO.

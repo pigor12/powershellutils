@@ -4,293 +4,455 @@ CLS
 TITLE ServiceDesk - FIEMG
 SETLOCAL EnableDelayedExpansion
 ECHO.
-ECHO    ░▒█▀▀▀░▀█▀░▒█▀▀▀░▒█▀▄▀█░▒█▀▀█
-ECHO    ░▒█▀▀░░▒█░░▒█▀▀▀░▒█▒█▒█░▒█░▄▄
-ECHO    ░▒█░░░░▄█▄░▒█▄▄▄░▒█░░▒█░▒█▄▄▀
+ECHO ----------------------------------------------------
+ECHO ==+++=::::::==::++::::::-+-:::-++=:::-+++-:::::=++==
+ECHO ==+++:  ----+  .+:  ----=+  . .+=    -+:  :==.  ++==
+ECHO ==+++  .---+=  -+   ::::+- .- .+ .:  +:  =+----=++==
+ECHO ++++-  ----+.  +-  -====+. --   .+  -+   ++-:  -++++
+ECHO ++++  .++++=  :+.  ....==  +=  .+=  ++-   ::.  +++++
+ECHO ==++==++++++==++=======++=+++==+++=++++++====+++++==
+ECHO.
+ECHO  Federação das Indústrias do Estado de Minas Gerais
 ECHO.
 ECHO.
-ECHO 1 ─ Preparação de computadores
-ECHO 2 ─ Instalação avulsa
-ECHO 3 ─ Rotinas
-ECHO 4 ─ Sair do programa
-ECHO.
-CHOICE /C 1234 /M "Escolha uma das opções acima:"
-GOTO :CASE-%ERRORLEVEL%
-:CASE-1
-    POWERSHELL -Command "Write-Host -fore Yellow 'Os arquivos deverão estar na mesma pasta deste script com o nome TMP.'"
+ECHO Autor: Pedro Igor Martins dos Reis
+:MENU
+    ECHO.
+    ECHO [0] SAIR
+    ECHO [1] Preparação de computadores
+    ECHO [2] Instalação avulsa
+    ECHO [3] Rotinas
+    ECHO.
+    SET /P "ESCOLHA=Digite a opção que deseja e pressione ENTER: "
+    IF "%ESCOLHA%" == "0" GOTO :FIM
+    IF "%ESCOLHA%" == "1" GOTO :PREP
+    IF "%ESCOLHA%" == "2" GOTO :INST_MENU
+    IF "%ESCOLHA%" == "3" GOTO :ROT_MENU
+:PREP
+    POWERSHELL -Command  "Write-Host -fore Yellow 'Verifique se o diretório C:\TMP está disponível e com todos os arquivos necessários.'"
+    IF NOT EXIST "C$\TMP" (
+        POWERSHELL -Command  "Write-Host -fore Red 'Pasta TMP indisponível, retornado ao menu principal.'"
+    ) ELSE (
+        REM TO DO
+    )
+    GOTO :MENU
+:DOWNLOAD
+    SET "URL=%~1"
+    SET "DESTINATION=%~2"
+    SET "P_NAME=%~3"
+    BITSADMIN /TRANSFER "%P_NAME%" /DOWNLOAD /PRIORITY NORMAL "%URL%" "%DESTINATION%"
+    IF %ERRORLEVEL% NEQ 0 (
+        POWERSHELL -Command  "Write-Host -fore Red 'Falha ao baixar o arquivo. Verifique sua conexão com a internet e tente novamente.'"
+        EXIT /B 1
+    ) ELSE (
+        POWERSHELL -Command  "Write-Host -fore Green 'Download concluída.'"
+        EXIT /B 0
+    )
+:PWS_DOWNLOAD
+    SET "URL=%~1"
+    SET "DESTINATION=%~2"
+    SET "P_NAME=%~3"
+    ECHO %URL%
     PAUSE
-    START /WAIT TMP\7zip.exe /S
-    START /WAIT TMP\PDFSam.msi /QUIET /NORESTART
-    START /WAIT TMP\Acrobat.exe /sAll
-    START /WAIT TMP\Chrome.msi /PASSIVE
-    START /WAIT TMP\Teams.exe -s
-    START /WAIT TMP\CitrixWorkspaceApp.exe /silent
-    START /WAIT TMP\installer.exe /s
-    GOTO :CASE-4
-:CASE-2
-    CLS
+    POWERSHELL -Command "Start-BitsTransfer -DisplayName %P_NAME% -Source "%URL%" -Destination '%DESTINATION%'"
+    IF %ERRORLEVEL% NEQ 0 (
+        POWERSHELL -Command  "Write-Host -fore Red 'Falha ao baixar o arquivo. Verifique sua conexão com a internet e tente novamente.'"
+        EXIT /B 1
+    ) ELSE (
+        POWERSHELL -Command  "Write-Host -fore Green 'Download concluída.'"
+        EXIT /B 0
+    )
+    EXIT /B 0
+:INSTALL
+    SET "INSTALLER=%~1"
+    SET "FLAGS=%~2"
+    START /WAIT "" "%INSTALLER%" "%FLAGS%"
+    IF %ERRORLEVEL% NEQ 0 (
+        POWERSHELL -Command  "Write-Host -fore Red 'Falha ao instalar o programa. Verifique se o arquivo do instalador está correto.'"
+        EXIT /B 1
+    ) ELSE (
+        POWERSHELL -Command  "Write-Host -fore Green 'Instalação concluída.'"
+        EXIT /B 0
+    )
+:MSI_INSTALL
+    SET "INSTALLER=%~1"
+    START /WAIT MSIEXEC /I "%INSTALLER%" /PASSIVE /NORESTART
+    IF %ERRORLEVEL% NEQ 0 (
+        POWERSHELL -Command  "Write-Host -fore Red 'Falha ao instalar o programa. Verifique se o arquivo do instalador está correto.'"
+        EXIT /B 1
+    ) ELSE (
+        POWERSHELL -Command  "Write-Host -fore Green 'Instalação concluída.'"
+        EXIT /B 0
+    )
+:CRIAR_PASTA
     ECHO.
     IF NOT EXIST "C:\TMP" (
         MKDIR "C:\TMP"
         SET "LOCAL=C:\TMP"
         POWERSHELL -Command "Write-Host -fore Green 'Pasta TMP criada no disco local.'"
+        EXIT /B 0
     ) ELSE (
-        IF NOT EXIST "C:\INST" (
-            MKDIR "C:\INST"
-            SET "LOCAL=C:\INST"
-            POWERSHELL -Command "Write-Host -fore Green 'Pasta INST criada no disco local.'"
-        ) ELSE (
-            SET "LOCAL=C:\TMP"
-            POWERSHELL -Command "Write-Host -fore Yellow 'Pasta TMP já criada no disco local.'"
+        SET "LOCAL=C:\TMP"
+        POWERSHELL -Command "Write-Host -fore Yellow 'Pasta TMP já criada no disco local.'"
+        EXIT /B 0
+    )
+:CREDENCIAIS
+    SET /P "USERNAME=Digite seu nome de usuário: "
+    SET /P "PASSWORD=Digite sua senha (aparecerá no console): "
+    EXIT /B 0
+:INST_MENU
+    CLS
+    ECHO.
+    POWERSHELL -Command "Write-Host -fore Cyan 'É necessário conexão com a internet para o download dos pacotes.'"
+    ECHO.
+    ECHO [0]  SAIR
+    ECHO [1]  7-zip
+    ECHO [2]  PDFSam
+    ECHO [3]  Adobe Reader
+    ECHO [4]  Google Chrome
+    ECHO [5]  Mozilla Firefox
+    ECHO [6]  Microsoft Teams
+    ECHO [7]  Citrix Workspace
+    ECHO [8]  Kaspersky Endpoint
+    ECHO [9]  Microsoft Office
+    ECHO [10] PROTHEUS
+    ECHO [11] Drivers Certisign
+    ECHO [12] Microsoft PowerBI
+    ECHO [13] VPN FortiClient
+    ECHO.
+    SET /P "I=Digite a opção que deseja e pressione ENTER: "
+    IF "%I%" == "0"  GOTO :MENU
+    IF "%I%" == "1"  GOTO :INST_7ZIP
+    IF "%I%" == "2"  GOTO :INST_PDFSAM
+    IF "%I%" == "3"  GOTO :INST_ACROBAT
+    IF "%I%" == "4"  GOTO :INST_CHROME
+    IF "%I%" == "5"  GOTO :INST_FIREFOX
+    IF "%I%" == "6"  GOTO :INST_TEAMS
+    IF "%I%" == "7"  GOTO :INST_CITRIX
+    IF "%I%" == "8"  GOTO :INST_KASPERSKY
+    IF "%I%" == "9"  GOTO :OFFICE_MENU
+    IF "%I%" == "10" GOTO :INST_PROTHEUS
+    IF "%I%" == "11" GOTO :INST_CERTISIGN
+    IF "%I%" == "12" GOTO :INST_BI
+:INST_7ZIP
+    CALL :CRIAR_PASTA
+    ECHO.
+    POWERSHELL -Command "Write-Host -fore Cyan 'Baixando e instalando o 7-Zip...'"
+    IF NOT EXIST "%LOCAL%\7zip.exe" (
+        CALL :DOWNLOAD "https://www.7-zip.org/a/7z2301-x64.exe" "%LOCAL%\7zip.exe" "7-Zip"
+    )
+    CALL :INSTALL "%LOCAL%\7zip.exe" "/S"
+    GOTO :INST_MENU
+:INST_PDFSAM
+    CALL :CRIAR_PASTA
+    POWERSHELL -Command "Write-Host -fore Cyan 'Baixando e instalando o PDFSam Basic...'"
+    IF NOT EXIST "%LOCAL%\PDFSam.msi" (
+        CALL :DOWNLOAD "https://github.com/torakiki/pdfsam/releases/download/v5.1.2/pdfsam-5.1.2.msi" "%LOCAL%\PDFSam.msi" "PDFSam Basic"
+    )
+    CALL :MSI_INSTALL "%LOCAL%\PDFSam.msi"
+    ECHO.
+    GOTO :INST_MENU
+:INST_ACROBAT
+    CALL :CRIAR_PASTA
+    POWERSHELL -Command "Write-Host -fore Cyan 'Baixando e instalando o Adobe Acrobat...'"
+    IF NOT EXIST "%LOCAL%\Acrobat.exe" (
+        CALL :DOWNLOAD "https://ardownload2.adobe.com/pub/adobe/acrobat/win/AcrobatDC/2300320215/AcroRdrDCx642300320215_MUI.exe" "%LOCAL%\Acrobat.exe" "Acrobat Reader"
+    )
+    CALL :INSTALL "%LOCAL%\Acrobat.exe" "/sAll"
+    ECHO.
+    GOTO :INST_MENU
+:INST_CHROME
+    CALL :CRIAR_PASTA
+    POWERSHELL -Command "Write-Host -fore Cyan 'Baixando e instalando o Google Chrome...'"
+    IF NOT EXIST "%LOCAL%\Chrome.msi" (
+        CALL :DOWNLOAD "https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise64.msi" "%LOCAL%\Chrome.msi" "Google Chrome"
+    )
+    CALL :MSI_INSTALL "%LOCAL%\Chrome.msi"
+    ECHO.
+    GOTO :INST_MENU
+:INST_FIREFOX
+    CALL :CRIAR_PASTA
+    POWERSHELL -Command "Write-Host -fore Cyan 'Baixando e instalando o Mozilla Firefox...'"
+    IF NOT EXIST "%LOCAL%\Firefox.msi" (
+        CALL :DOWNLOAD "https://download.mozilla.org/?product=firefox-msi-latest-ssl&os=win64&lang=pt-BR" "%LOCAL%\Firefox.msi" "Mozilla Firefox"
+    )
+    CALL :MSI_INSTALL "%LOCAL%\Firefox.msi"
+    ECHO.
+    GOTO :INST_MENU
+:INST_TEAMS
+    CALL :CRIAR_PASTA
+    POWERSHELL -Command "Write-Host -fore Cyan 'Baixando e instalando o Microsoft Teams...'"
+    IF NOT EXIST "%LOCAL%\Teams.exe" (
+        CALL :DOWNLOAD "https://statics.teams.cdn.office.net/production-windows-x64/1.6.00.6754/Teams_windows_x64.exe" "%LOCAL%\Teams.exe" "Microsoft Teams"
+    )
+    CALL :INSTALL "%LOCAL%\Teams.exe" "-s"
+    ECHO.
+    GOTO :INST_MENU
+:INST_CITRIX
+    CALL :CRIAR_PASTA
+    POWERSHELL -Command "Write-Host -fore Cyan 'Baixando e instalando o Citrix Workspace...'"
+    IF NOT EXIST "%LOCAL%\CitrixWorkspaceApp.exe" (
+        CALL :DOWNLOAD "https://downloadplugins.citrix.com/ReceiverUpdates/Prod/Receiver/Win/CitrixWorkspaceApp23.5.1.83.exe" "%LOCAL%\CitrixWorkspaceApp.exe" "Citrix Workspace"
+    )
+    CALL :INSTALL "%LOCAL%\CitrixWorkspaceApp.exe" "/silent"
+    ECHO.
+    GOTO :INST_MENU
+:INST_KASPERSKY
+    CALL :CRIAR_PASTA
+    IF NOT EXIST "%LOCAL%\installer.exe" (
+        SET /P "USERNAME=Digite seu nome de usuário:"
+        SET /P "PASSWORD=Digite sua senha (aparecerá no console):"
+        POWERSHELL -Command "NET USE J: '\\ATALEIA\Instalacao-Hdesk' /USER:FIEMG\%USERNAME% %PASSWORD%"
+        POWERSHELL -Command "Copy-Item -Path 'J:\SEDE\Windows 10 e 11\installer.exe' -Destination '%LOCAL%\installer.exe'"
+        POWERSHELL -Command "NET USE J: /DELETE"
+    )
+    START /WAIT %LOCAL%\installer.exe /s
+    GOTO :INST_MENU
+:OFFICE_MENU
+    ECHO [0] SAIR
+    ECHO [1] 2010
+    ECHO [2] 2013
+    ECHO [3] 2016
+    ECHO [4] 2019
+    ECHO [5] 2021
+    ECHO.
+    SET /P "OFV=Digite a opção que deseja e pressione ENTER: "
+    IF "%OFV%" == "0"  GOTO :INST_MENU
+    IF "%OFV%" == "1"  GOTO :OFV_2010
+    IF "%OFV%" == "2"  GOTO :OFV_2013
+    IF "%OFV%" == "3"  GOTO :OFV_2016
+    IF "%OFV%" == "4"  GOTO :OFV_2019
+    IF "%OFV%" == "5"  GOTO :OFV_2021
+:OF_MOUNT
+    NET USE K: "\\TARUMIRIM\SOFTWARE$\10-PROGRAMAS\Microsoft Office" /USER:FIEMG\%USERNAME% %PASSWORD%
+    EXIT /B 0
+:OF_UMOUNT
+    NET USE K: /DELETE
+    EXIT /B 0
+:OF_ERROR_MESSAGE
+    POWERSHELL -Command "Write-Host -fore Red 'Erro, arquivo de instalação (setup.exe) indisponível.'"
+:OFV_2010
+    CALL :CREDENCIAIS
+    CALL :OF_MOUNT
+    IF EXIST "K:\Microsoft Office 2010" (
+        "K:\Microsoft Office 2010\setup.exe"
+        CALL :OF_UMOUNT
+    ) ELSE (
+        CALL :OF_ERROR_MESSAGE
+    )
+    GOTO :INST_MENU
+:OFV_2013
+    CALL :CREDENCIAIS
+    CALL :OF_MOUNT
+    IF EXIST "K:\Microsoft Office 2013" (
+        "K:\Microsoft Office 2013\setup.exe"
+        CALL :OF_UMOUNT
+    ) ELSE (
+        CALL :OF_ERROR_MESSAGE
+    )
+    GOTO :INST_MENU
+:OFV_2016
+    CALL :CREDENCIAIS
+    CALL :OF_MOUNT
+    IF EXIST "K:\Microsoft Office 2016" (
+        "K:\Microsoft Office 2016\setup.exe"
+        CALL :OF_UMOUNT
+    ) ELSE (
+        CALL :OF_ERROR_MESSAGE
+    )
+    GOTO :INST_MENU
+:OFV_2019
+    CALL :CREDENCIAIS
+    SET /P "ENT=Digite a entidade: (fiemg | sesi | senai | iel)"
+    IF EXIST "K:\Microsoft Office 2019 Pro Plus\config-%ENT%.xml" (
+        "K:\Microsoft Office  2019 Pro Plus\setup.exe /configure K:\Microsoft Office 2019 Pro Plus\config-%ENT%.xml"
+        CALL :OF_UMOUNT
+    ) ELSE (
+        POWERSHELL -Command "Write-Host -fore Red 'Erro, entidade incorreta ou arquivo .xml indisponível.'"
+    )
+    GOTO :INST_MENU
+:OFV_2021
+    CALL :CREDENCIAIS
+    SET /P "ENT=Digite a entidade: (fiemg | sesi | senai | iel)"
+    CALL :OF_MOUNT
+    IF EXIST "K:\Microsoft Office 2021 Pro Plus\config-office2021-%ENT%.xml"(
+        "K:\Microsoft Office 2021 Pro Plus\setup.exe /configure K:\Microsoft Office 2021 Pro Plus\config-office2021-%ENT%.xml"
+        CALL :OF_UMOUNT
+    ) ELSE (
+        POWERSHELL -Command "Write-Host -fore Red 'Erro, entidade incorreta ou arquivo .xml indisponível.'"
+    )
+    GOTO :INST_MENU
+:INST_PROTHEUS
+    IF NOT EXIST "C:\PROTHEUS\" (
+        CALL :CREDENCIAIS
+        NET USE I: "\\TARUMIRIM\SOFTWARE$\10-PROGRAMAS\UTILIDADES" /USER:FIEMG\%USERNAME% %PASSWORD%
+        MKDIR "C:\PROTHEUS"
+        XCOPY "I:PROTHEUS\" "C:\PROTHEUS\" /E /H
+        NET USE I: /DELETE
+    ) ELSE (
+        POWERSHELL -Command "Write-Host -fore Red 'Pasta PROTHEUS existente no disco, gentileza verificar.'"
+    )
+    GOTO :INST_MENU
+:INST_CERTISIGN
+    SET /P "CERT=Escolha o tipo de certificado ( 0 - Starsign CUT | 1 - Desktop ID ): "
+    IF "%CERT%" == "0" (
+        ECHO.
+        ECHO Baixando arquivos necessários...
+        CALL :CRIAR_PASTA
+        PAUSE
+        IF NOT EXIST "%LOCAL%\GDSetup.exe" (
+            CALL :DOWNLOAD "https://drivers.certisign.com.br/midias/tokens/gdburti/64bits/2k-xp-vi-7/GDsetupStarsignCUTx64.exe" "%LOCAL%\GDSetup.exe" "GDSetup"
+        )
+        IF NOT EXIST "%LOCAL%\CSP.exe" (
+            CALL :DOWNLOAD "https://drivers.certisign.com.br/midias/gerenciadores/safesign/64bits/SafeSignIC30124-x64-win-tu-admin.exe" "%LOCAL%\CSP.exe" "CSP-Safesign"
         )
     )
-    ECHO.
-    ECHO 0 ─ 7-zip
-    ECHO 1 ─ PDFSam
-    ECHO 2 ─ Adobe Reader
-    ECHO 3 ─ Google Chrome
-    ECHO 4 ─ Mozilla Firefox
-    ECHO 5 ─ Microsoft Teams
-    ECHO 6 ─ Citrix Workspace
-    ECHO 7 ─ Kaspersky Endpoint
-    ECHO 8 - Microsoft Office
-    :: TO DO
-    :: ECHO 9 - PROTHEUS
-    ECHO 10 - Drivers Certisign
-    ECHO 11 - Microsoft PowerBI
-    ECHO.
-    SET /P "N=Escolha uma das opções acima:"
-    :OPCAO-PRIM
-        GOTO :OPCAO-%N% 2 > NUL || (
-            ECHO Opção inválida.
-        )
-        GOTO :CASE-4
-    :OPCAO-0
-        IF NOT EXIST "%LOCAL%\7zip.exe" (
-            CURL -o %LOCAL%\7zip.exe "https://www.7-zip.org/a/7z2301-x64.exe"
-        )
-        START /WAIT %LOCAL%\7zip.exe /S
-        GOTO :CASE-4
-    :OPCAO-1
-        IF NOT EXIST "%LOCAL%\PDFSam.msi" (
-            CURL -o %LOCAL%\PDFSam.msi -L "https://github.com/torakiki/pdfsam/releases/download/v5.1.2/pdfsam-5.1.2.msi"
-        )
-        START /WAIT %LOCAL%\PDFSam.msi /QUIET /NORESTART
-        GOTO :CASE-4
-    :OPCAO-2
-        IF NOT EXIST "%LOCAL%\Acrobat.exe" (
-            CURL -o %LOCAL%\Acrobat.exe "https://ardownload2.adobe.com/pub/adobe/acrobat/win/AcrobatDC/2300320215/AcroRdrDCx642300320215_MUI.exe"
-        )
-        START /WAIT %LOCAL%\Acrobat.exe /sAll
-        GOTO :CASE-4
-    :OPCAO-3
-        IF NOT EXIST "%LOCAL%\Chrome.msi" (
-            CURL -o %LOCAL%\Chrome.msi "https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise64.msi"
-        )
-        START /WAIT %LOCAL%\Chrome.msi /PASSIVE
-        GOTO :CASE-4
-    :OPCAO-4
-        IF NOT EXIST "%LOCAL%\Firefox.exe" (
-            CURL -L -o %LOCAL%\Firefox.exe "https://download.mozilla.org/?product=firefox-latest&os=win64&lang=pt-BR"
-        )
-        START /WAIT %LOCAL%\Firefox.exe /S
-        GOTO :CASE-4
-    :OPCAO-5
-        IF NOT EXIST "%LOCAL%\Teams.exe" (
-            CURL -o %LOCAL%\Teams.exe "https://statics.teams.cdn.office.net/production-windows-x64/1.6.00.6754/Teams_windows_x64.exe"
-        )
-        START /WAIT %LOCAL%\Teams.exe -s
-        GOTO :CASE-4
-    :OPCAO-6
-        IF NOT EXIST "%LOCAL%\CitrixWorkspaceApp.exe" (
-            CURL -o %LOCAL%\CitrixWorkspaceApp.exe "https://downloadplugins.citrix.com/ReceiverUpdates/Prod/Receiver/Win/CitrixWorkspaceApp23.5.1.83.exe"
-        )
-        START /WAIT %LOCAL%\CitrixWorkspaceApp.exe /silent
-        GOTO :CASE-4
-    :OPCAO-7
-        IF NOT EXIST "%LOCAL%\installer.exe" (
-            SET /P "USERNAME=Digite seu nome de usuário:"
-            SET /P "PASSWORD=Digite sua senha (aparecerá no console):"
-            POWERSHELL -Command "NET USE J: '\\ATALEIA\Instalacao-Hdesk' /USER:FIEMG\%USERNAME% %PASSWORD%"
-            POWERSHELL -Command "Copy-Item -Path 'J:\SEDE\Windows 10 e 11\installer.exe' -Destination '%LOCAL%\installer.exe'"
-            POWERSHELL -Command "NET USE J: /DELETE"
-        )
-        START /WAIT %LOCAL%\installer.exe /s
-        GOTO :CASE-4
-    :OPCAO-8
-        ECHO.
-        ECHO Versões disponíveis
-        ECHO 0 - 2010
-        ECHO 1 - 2013
-        ECHO 2 - 2016
-        ECHO 3 - 2019
-        ECHO 4 - 2021
-        SET /P "N=Escolha a versão do Office:"
-        :OFFICEV-PRIM
-        GOTO :OFFICEV-%N% 2 > NUL || (
-            ECHO Opção inválida.
-        )
-        :OFFICEV-0
-            SET /P "USERNAME=Digite seu nome de usuário:"
-            SET /P "PASSWORD=Digite sua senha (aparecerá no console):"
-            NET USE K: "\\TARUMIRIM\SOFTWARE$\10-PROGRAMAS\Microsoft Office" /USER:FIEMG\%USERNAME% %PASSWORD%
-            "K:\Microsoft Office 2010\setup.exe"
-            NET USE K: /DELETE
-            GOTO :CASE-4
-        :OFFICEV-1
-            SET /P "USERNAME=Digite seu nome de usuário:"
-            SET /P "PASSWORD=Digite sua senha (aparecerá no console):"
-            NET USE K: "\\TARUMIRIM\SOFTWARE$\10-PROGRAMAS\Microsoft Office" /USER:FIEMG\%USERNAME% %PASSWORD%
-            "K:\Microsoft Office 2013\setup.exe"
-            NET USE K: /DELETE
-            GOTO :CASE-4
-        :OFFICEV-2
-            SET /P "USERNAME=Digite seu nome de usuário:"
-            SET /P "PASSWORD=Digite sua senha (aparecerá no console):"
-            NET USE K: "\\TARUMIRIM\SOFTWARE$\10-PROGRAMAS\Microsoft Office" /USER:FIEMG\%USERNAME% %PASSWORD%
-            "K:\Microsoft Office 2016\setup.exe"
-            NET USE K: /DELETE
-            GOTO :CASE-4
-        :OFFICEV-3
-            SET /P "USERNAME=Digite seu nome de usuário:"
-            SET /P "PASSWORD=Digite sua senha (aparecerá no console):"
-            SET /P "ENT=Digite a entidade:"
-            NET USE K: "\\TARUMIRIM\SOFTWARE$\10-PROGRAMAS\Microsoft Office" /USER:FIEMG\%USERNAME% %PASSWORD%
-            "K:\Microsoft Office  2019 Pro Plus\setup.exe /configure K:\Microsoft Office 2019 Pro Plus\config-%ENT%.xml"
-            NET USE K: /DELETE
-            GOTO :CASE-4
-        :OFFICEV-4
-            SET /P "USERNAME=Digite seu nome de usuário:"
-            SET /P "PASSWORD=Digite sua senha (aparecerá no console):"
-            SET /P "ENT=Digite a entidade:"
-            NET USE K: "\\TARUMIRIM\SOFTWARE$\10-PROGRAMAS\Microsoft Office" /USER:FIEMG\%USERNAME% %PASSWORD%
-            "K:\Microsoft Office 2021 Pro Plus\setup.exe /configure K:\Microsoft Office 2021 Pro Plus\config-office2021-%ENT%.xml"
-            NET USE K: /DELETE
-            GOTO :CASE-4
-    :OPCAO-9
-        GOTO :CASE-4
-    :OPCAO-10
-        SET /P "CERT=Escolha o tipo de certificado ( 0 - Starsign CUT | 1 - Desktop ID )"
-        IF %CERT% == 0 (
-            CURL -L -o GDSetup.exe "https://drivers.certisign.com.br/midias/tokens/gdburti/64bits/2k-xp-vi-7/GDsetupStarsignCUTx64.exe"
-            CURL -L -o CSP.exe "https://drivers.certisign.com.br/midias/gerenciadores/safesign/64bits/SafeSignIC30124-x64-win-tu-admin.exe"
-            START /WAIT GDSetup.exe
-            START /WAIT CSP.exe
-        )
-        IF %CERT% == 1 (
-            POWERSHELL -Command "Write-Host -fore Yellow 'Atenção! DesktopID funciona apenas com Windows 10 ou posterior.'"
-            PAUSE
-            CURL -L -o DesktopID.exe "https://drivers.certisign.com.br/DesktopID/Windows/Setup_desktopID.exe"
-            START /WAIT DesktopID.exe
-        )
-        GOTO :CASE-4
-    :OPCAO-11
-        IF NOT EXIST "%LOCAL%\java.exe" (
-            POWERSHELL -Command "Write-Host -fore Yellow 'Atenção! Será instalada a versão 64 Bits do JRE.'"
-            PAUSE
-            CURL -L -o %LOCAL%\java.exe "https://javadl.oracle.com/webapps/download/AutoDL?BundleId=248242_ce59cff5c23f4e2eaf4e778a117d4c5b"
-        )
-        START /WAIT %LOCAL%\java.exe /s
-        GOTO :CASE-4
-    :OPCAO-12
-        IF NOT EXIST "%LOCAL%\PowerBI.exe" (
-            CURL -L -o %LOCAL%\PowerBI.exe "https://download.microsoft.com/download/8/8/0/880BCA75-79DD-466A-927D-1ABF1F5454B0/PBIDesktopSetup_x64.exe"
-        )
-        START /WAIT %LOCAL%\PowerBI.exe -q -norestart ACCEPT_EULA=1
-:CASE-3
-    ECHO.
-    ECHO 0 ─ Adicionar impressora(s)
-    ECHO 1 ─ Adicionar máquina ao domínio *
-    ECHO 2 ─ Atualização de políticas de grupo
-    ECHO 3 - Windows Update
-    ECHO 4 - Verificador de Arquivos de Sistema *
-    ECHO 5 - Serial do computador
-    ECHO 6 - Listar usuário(s) administrador(es)
-    ECHO 7 - LAPS *
-    ECHO 8 - Análise técnica
-    SET /P "N=Escolha uma das opções acima:"
-    :ROT-PRIM
-        GOTO :ROT-%N% 2 > NUL || (
-            ECHO Opção inválida.
-        )
-        GOTO :CASE-4
-    :ROT-0
-        SET /P "EDF=Informe o prédio em questão (RBA | AF):"
-        SET /P "ANDAR=Informe seu andar:"
-        SET "PREFIX_IMPRESSORA=%EDF%-%ANDAR%-"
-        SET "SERVER=\\OLIVEIRA"
-        POWERSHELL -Command "Get-Printer -Name '%PREFIX_IMPRESSORA%*' | ForEach-Object { Add-Printer -Name $_.Name -ConnectionName '%SERVER%\'+$_.Name }"
-        GOTO :CASE-4
-    :ROT-1
-        POWERSHELL -Command "Write-Host -fore Yellow 'Para poder executar este comando é necessário ter privilégio de administrador.'"
-        SET /P "USER=Digite o nome do seu usuário:"
-        SET /P "NOMEDOPC=Digite o nome do computador:"
-        POWERSHELL -Command "Add-Computer -ComputerName %NOMEDOPC% -DomainName 'fiemg.com.br' -Credential FIEMG\%USER% -Force"
-        GOTO :CASE-4
-    :ROT-2
-        GPUPDATE /FORCE
-        POWERSHELL -Command "Test-ComputerSecureChannel -Verbose"
-        GOTO :CASE-4
-    :ROT-3
-        SETLOCAL
-        FOR /F %%I IN ('powershell.exe -ExecutionPolicy Bypass -Command "(Get-WmiObject -Class Win32_OperatingSystem).Version"') do set OS_VERSION=%%I
-        IF "%OS_VERSION:~0,3%"=="6.1" (
-            START control update
-        ) ELSE IF "%OS_VERSION:~0,3%"=="6.2" (
-            START control update
-        ) ELSE IF "%OS_VERSION:~0,3%"=="10." (
-            START ms-settings:windowsupdate
-        ) ELSE IF "%OS_VERSION:~0,3%"=="11." (
-            START ms-settings:windowsupdate
-        )
-        ENDLOCAL
-        GOTO :CASE-4
-    :ROT-4
-        POWERSHELL -Command "Write-Host -fore Yellow 'Para executar estes comandos, é necessário que esteja executando como ADMINISTRADOR.'"
+    IF "%CERT%" == "1" (
+        POWERSHELL -Command "Write-Host -fore Yellow 'Atenção! DesktopID funciona apenas com Windows 10 ou posterior.'"
         PAUSE
-        START /WAIT DISM /Online /Cleanup-image /Restorehealth
-        START /WAIT SFC /SCANNOW
-        GOTO :CASE-4
-    :ROT-5
-        WMIC BIOS GET SERIALNUMBER
-        GOTO :CASE-4
-    :ROT-6
-        POWERSHELL -Command "-LocalGroupMember -Group "Administradores"
-        GOTO :CASE-4
-    :ROT-7
-        POWERSHELL -Command "Write-Host -fore Yellow 'Para poder executar este comando é necessário ter privilégio de administrador.'"
-        SET /P "PC=Digite o nome da máquina:"
-        SET /P "USER=Digite o nome de seu usuário:"
-        POWERSHELL -Command "Get-LapsADPassword -Identity {%PC%} -AsPlainText -Credential FIEMG\%USER%"
-        GOTO :CASE-4
-    :ROT-8
-        CLS
-        ECHO.
-        ECHO UEFI / BIOS
-        WPEUTIL UpdateBootInfo
-        POWERSHELL -Command "Write-Host -fore Cyan 'Informativo | Caso seja 0x1 - BIOS/Legacy, 0x2 - UEFI'"
-        REG QUERY HKLM\System\CurrentControlSet\Control /v PEFirmwareType
-        ECHO.
-        ECHO CPU
-        POWERSHELL -Command "Get-CimInstance -ClassName Win32_Processor"
-        ECHO.
-        ECHO RAM
-        POWERSHELL -Command "Get-WmiObject -Class "Win32_PhysicalMemoryArray""
-        ECHO.
-        ECHO Disco(s) disponível(is)
-        POWERSHELL -Command "Get-Physicaldisk | Format-Table -Autosize"
-        ECHO.
-        ECHO Trusted Platform Module
-        POWERSHELL -Command "Get-TPM | Select TpmPresent, TpmReady, TpmEnabled, TpmActivated"
-        ECHO.
-        ECHO Secure Boot
-        POWERSHELL -Command "Confirm-SecureBootUEFI"
-        GOTO :CASE-4
-:CASE-4
+        CALL :CRIAR_PASTA
+        IF NOT EXIST "%LOCAL%\DesktopID.exe" (
+            CALL :DOWNLOAD "https://drivers.certisign.com.br/DesktopID/Windows/Setup_desktopID.exe" "%LOCAL%\DesktopID.exe" "DesktopID"
+        )
+        CALL :INSTALL 
+    )
+    GOTO :INST_MENU
+:INST_BI
+    CALL :CRIAR_PASTA
+    IF NOT EXIST "%LOCAL%\PowerBI.exe" (
+        CALL :DOWNLOAD "https://download.microsoft.com/download/8/8/0/880BCA75-79DD-466A-927D-1ABF1F5454B0/PBIDesktopSetup_x64.exe" "%LOCAL%\PowerBI.exe" "Microsoft PowerBI"
+    )
+    CALL :INSTALL "%LOCAL%\PowerBI.exe" "-silent -norestart"
+    GOTO :INST_MENU
+:ROT_MENU
+    CLS
+    ECHO.
+    ECHO [0]  SAIR
+    ECHO [1]  Adicionar impressora(s)
+    ECHO [2]  Adicionar máquina ao domínio *
+    ECHO [3]  Atualização de políticas de grupo
+    ECHO [4]  Windows Update
+    ECHO [5]  Verificador de Arquivos de Sistema *
+    ECHO [6]  Serial do computador
+    ECHO [7]  Listar usuário(s) administrador(es)
+    ECHO [8]  LAPS *
+    ECHO [9]  Análise técnica
+    ECHO [10] Avaliação chamado
+    ECHO.
+    SET /P "ROT_E=Digite a opção que deseja e pressione ENTER: "
+    IF "%ROT_E%" == "0"  GOTO :MENU
+    IF "%ROT_E%" == "1"  GOTO :ROT_IMPRESSORA
+    IF "%ROT_E%" == "2"  GOTO :ROT_DOMIN
+    IF "%ROT_E%" == "3"  GOTO :ROT_GRPPOL
+    IF "%ROT_E%" == "4"  GOTO :ROT_WINUPDATE
+    IF "%ROT_E%" == "5"  GOTO :ROT_DISM
+    IF "%ROT_E%" == "6"  GOTO :ROT_SERIAL
+    IF "%ROT_E%" == "7"  GOTO :ROT_ADMINS
+    IF "%ROT_E%" == "8"  GOTO :ROT_LAPS
+    IF "%ROT_E%" == "9"  GOTO :ROT_TEC
+    IF "%ROT_E%" == "10" GOTO :ROT_CHD
+:ROT_IMPRESSORA
+    SET /P "EDF=Informe o prédio em questão (RBA | AF):"
+    SET /P "ANDAR=Informe seu andar:"
+    SET "PREFIX_IMPRESSORA=%EDF%-%ANDAR%-"
+    SET "SERVER=\\OLIVEIRA"
+    POWERSHELL -Command "Get-Printer -Name '%PREFIX_IMPRESSORA%*' | ForEach-Object { Add-Printer -Name $_.Name -ConnectionName '%SERVER%\'+$_.Name }"
+    PAUSE
+    GOTO :ROT_MENU
+:ROT_DOMIN
+    POWERSHELL -Command "Write-Host -fore Yellow 'Para poder executar este comando é necessário ter privilégio de administrador.'"
+    SET /P "USER=Digite o nome do seu usuário:"
+    SET /P "NOMEDOPC=Digite o nome do computador:"
+    POWERSHELL -Command "Add-Computer -ComputerName %NOMEDOPC% -DomainName 'fiemg.com.br' -Credential FIEMG\%USER% -Force"
+    PAUSE
+    GOTO :ROT_MENU
+:ROT_GRPPOL
+    GPUPDATE /FORCE
+    POWERSHELL -Command "Test-ComputerSecureChannel -Verbose"
+    PAUSE
+    GOTO :ROT_MENU
+:ROT_WINUPDATE
+    SETLOCAL
+    FOR /F %%I IN ('powershell.exe -ExecutionPolicy Bypass -Command "(Get-WmiObject -Class Win32_OperatingSystem).Version"') do set OS_VERSION=%%I
+    IF "%OS_VERSION:~0,3%"=="6.1" (
+        START control update
+    ) ELSE IF "%OS_VERSION:~0,3%"=="6.2" (
+        START control update
+    ) ELSE IF "%OS_VERSION:~0,3%"=="10." (
+        START ms-settings:windowsupdate
+    ) ELSE IF "%OS_VERSION:~0,3%"=="11." (
+        START ms-settings:windowsupdate
+    )
+    ENDLOCAL
+    GOTO :ROT_MENU
+:ROT_DISM
+    POWERSHELL -Command "Write-Host -fore Yellow 'Para executar estes comandos, é necessário que esteja executando como ADMINISTRADOR.'"
+    PAUSE
+    START /WAIT DISM /Online /Cleanup-image /Restorehealth
+    START /WAIT SFC /SCANNOW
+    GOTO :ROT_MENU
+:ROT_SERIAL
+    FOR /f "usebackq skip=1 tokens=2 delims==" %%i IN (`WMIC BIOS GET SERIALNUMBER /VALUE 2^>NUL`) DO SET "SERIAL=%%i"
+    ECHO %SERIAL% | CLIP
+    POWERSHELL -Command "Write-Host -fore Cyan 'Código Serial copiado para a área de transferência.'"
+    PAUSE
+    GOTO :ROT_MENU
+:ROT_ADMINS
+    POWERSHELL -Command "Get-LocalGroupMember -Group "Administradores""
+    PAUSE
+    GOTO :ROT_MENU
+:ROT_LAPS
+    POWERSHELL -Command "Write-Host -fore Yellow 'Para poder executar este comando é necessário ter privilégio de administrador.'"
+    SET /P "PC=Digite o nome da máquina:"
+    SET /P "USER=Digite o nome de seu usuário:"
+    POWERSHELL -Command "Get-LapsADPassword -Identity %PC% -AsPlainText -Credential FIEMG\%USER%"
+    PAUSE
+    GOTO :ROT_MENU
+:ROT_TEC
+    CLS
+    ECHO.
+    ECHO.
+    ECHO CPU
+    POWERSHELL -Command "Get-CimInstance -ClassName Win32_Processor"
+    ECHO.
+    ECHO RAM
+    POWERSHELL -Command "Get-WmiObject -Class "Win32_PhysicalMemoryArray""
+    ECHO.
+    ECHO Disco(s) disponível(is)
+    POWERSHELL -Command "Get-Physicaldisk | Format-Table -Autosize | Select MediaType"
+    ECHO.
+    PAUSE
+    GOTO :ROT_MENU
+:ROT_CHD
+    SET /P "SOLICITANTE=Nome do(a) solicitante: "
+    SET /P "CAUSA=Causa raiz: "
+    SET /P "SOLUCAO=Solução aplicada: "
+    SET /P "TESTES=Testes realizados: "
+    SET /P "TECNICO=Técnico responsável: "
+    ECHO.
+    ECHO Resolvido.
+    ECHO Prezado(a) %SOLICITANTE%, estamos finalizando seu chamado.
+    ECHO Causa raiz: %CAUSA%
+    ECHO Testes realizados: %TESTES%
+    ECHO.
+    ECHO Após receber este e-mail, não deixe de avaliar, sua opinião é muito importante para melhoria de nosso atendimento.
+    ECHO.
+    ECHO Atenciosamente,
+    ECHO %TECNICO%.
+    ECHO ---------------------------------
+    ECHO Técnico de Suporte de Informática
+    PAUSE
+    GOTO :ROT_MENU
+:FIM
     ECHO.
     IF EXIST "%LOCAL%" (
-        RMDIR /S /Q %LOCAL%
-        POWERSHELL -Command "Write-Host -fore Yellow 'Limpando resíduos.'"
+        SET /P "BKP=Deseja manter os arquivos no diretório %LOCAL% (0 - Não | 1 - SIM) ? "
+        IF "%BKP%" == "0" (
+            RMDIR /S /Q %LOCAL%
+            POWERSHELL -Command "Write-Host -fore Yellow 'Limpando resíduos.'"
+        ) ELSE (
+            POWERSHELL -Command "Write-Host -fore Yellow 'Diretório %LOCAL% inalterado.'"
+        )
     )
     ECHO.
     POWERSHELL -Command "Write-Host -fore Cyan 'Programa encerrado, pressione qualquer tecla para sair.'"
